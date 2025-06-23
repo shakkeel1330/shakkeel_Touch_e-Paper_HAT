@@ -1,105 +1,99 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
+#!/usr/bin/python
+# -*- coding:utf-8 -*-
 import sys
 import os
-import time
-from PIL import Image, ImageDraw, ImageFont
 
-# Add the library path (adjust if your path is different)
-libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+# Set up paths (adjust these if your directory structure is different)
+picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic/2in13')
+fontdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
+libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
+
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-# Try to import the e-paper library
+from TP_lib import epd2in13_V4
+import time
+import logging
+from PIL import Image, ImageDraw, ImageFont
+import traceback
+
+logging.basicConfig(level=logging.DEBUG)
+
 try:
-    from waveshare_epd import epd2in13_V3  # Use V3 for newer versions
-    from waveshare_epd import epdconfig
-except ImportError:
-    print("E-paper library not found. Make sure you've installed the Waveshare library.")
-    print("Download from: https://github.com/waveshare/e-Paper")
-    sys.exit(1)
-
-def display_text():
+    logging.info("Starting simple quote display")
+    
+    # Initialize the e-paper display
+    epd = epd2in13_V4.EPD()
+    logging.info("Initializing display...")
+    epd.init(epd.FULL_UPDATE)
+    epd.Clear(0xFF)  # Clear with white background
+    
+    # Create a new image with white background
+    # The display is 122x250 pixels
+    image = Image.new('1', (epd.height, epd.width), 255)  # 255 = white background
+    draw = ImageDraw.Draw(image)
+    
+    # Load fonts - try different sizes
     try:
-        print("Initializing e-Paper display...")
-        
-        # Initialize the display
-        epd = epd2in13_V3.EPD()
-        epd.init(epd.FULL_UPDATE)
-        epd.Clear(0xFF)  # Clear to white
-        
-        # Create a new image with white background
-        # Display dimensions: 250x122 pixels
-        image = Image.new('1', (epd.width, epd.height), 255)  # 255 = white
-        draw = ImageDraw.Draw(image)
-        
-        # Try to use a built-in font, fallback to default if not available
-        try:
-            # Try to load a TrueType font (adjust path as needed)
-            font_large = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 18)
-            font_small = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', 14)
-        except:
-            # Fallback to default font if TrueType font not found
-            print("Using default font (TrueType font not found)")
-            font_large = ImageFont.load_default()
-            font_small = ImageFont.load_default()
-        
-        # Your text
-        main_text = "I am hungry!!!"
-        signature = "- Paathu"
-        
-        # Get text dimensions for centering
-        bbox1 = draw.textbbox((0, 0), main_text, font=font_large)
-        text1_width = bbox1[2] - bbox1[0]
-        text1_height = bbox1[3] - bbox1[1]
-        
-        bbox2 = draw.textbbox((0, 0), signature, font=font_small)
-        text2_width = bbox2[2] - bbox2[0]
-        
-        # Calculate positions (centered)
-        x1 = (epd.width - text1_width) // 2
-        y1 = (epd.height - text1_height) // 2 - 10
-        
-        x2 = (epd.width - text2_width) // 2
-        y2 = y1 + text1_height + 10
-        
-        # Draw the text (0 = black)
-        draw.text((x1, y1), main_text, font=font_large, fill=0)
-        draw.text((x2, y2), signature, font=font_small, fill=0)
-        
-        # Optional: Add a decorative border
-        draw.rectangle([(5, 5), (epd.width-5, epd.height-5)], outline=0, width=2)
-        
-        print("Displaying text on e-Paper...")
-        
-        # Display the image
-        epd.display(epd.getbuffer(image))
-        
-        print("Text displayed successfully!")
-        print("The message will remain on the screen even after the program ends.")
-        
-        # Put display to sleep to save power
-        epd.sleep()
-        
-    except IOError as e:
-        print(f"Error: {e}")
-        print("Make sure:")
-        print("1. SPI is enabled (sudo raspi-config)")
-        print("2. Display is properly connected")
-        print("3. You're running with sudo privileges")
-        
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-        epdconfig.module_exit()
-        exit()
-
-if __name__ == '__main__':
-    print("Waveshare 2.13\" E-Paper Text Display")
-    print("Displaying: 'I am hungry!!! - Paathu'")
-    print("-" * 40)
+        font_large = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 20)
+        font_small = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 16)
+    except:
+        # Fallback to default font if custom font not found
+        font_large = ImageFont.load_default()
+        font_small = ImageFont.load_default()
     
-    display_text()
+    # The quote text
+    quote_text = "I am hungry!!!"
+    author_text = "* Paathu"
     
-    print("\nDone! The text should now be visible on your e-paper display.")
-    print("The display will retain this image even when powered off.")
+    # Get text dimensions for centering
+    quote_bbox = draw.textbbox((0, 0), quote_text, font=font_large)
+    author_bbox = draw.textbbox((0, 0), author_text, font=font_small)
+    
+    quote_width = quote_bbox[2] - quote_bbox[0]
+    quote_height = quote_bbox[3] - quote_bbox[1]
+    author_width = author_bbox[2] - author_bbox[0]
+    author_height = author_bbox[3] - author_bbox[1]
+    
+    # Calculate positions for centering
+    display_width = epd.height  # 122
+    display_height = epd.width  # 250
+    
+    quote_x = (display_width - quote_width) // 2
+    quote_y = (display_height - quote_height - author_height - 20) // 2  # 20px spacing
+    
+    author_x = (display_width - author_width) // 2
+    author_y = quote_y + quote_height + 20
+    
+    # Draw the text
+    draw.text((quote_x, quote_y), quote_text, font=font_large, fill=0)  # 0 = black
+    draw.text((author_x, author_y), author_text, font=font_small, fill=0)
+    
+    # Display the image
+    logging.info("Displaying quote...")
+    epd.display(epd.getbuffer(image))
+    
+    logging.info("Quote displayed successfully!")
+    logging.info("The display will remain showing the quote until you run another script or power off.")
+    
+    # Put the display to sleep to save power
+    time.sleep(2)
+    epd.sleep()
+    
+except IOError as e:
+    logging.error(f"IO Error: {e}")
+    
+except KeyboardInterrupt:    
+    logging.info("Interrupted by user")
+    epd.sleep()
+    
+except Exception as e:
+    logging.error(f"Unexpected error: {e}")
+    traceback.print_exc()
+    
+finally:
+    # Clean up
+    try:
+        epd.Dev_exit()
+    except:
+        pass

@@ -42,20 +42,16 @@ try:
         font_large = ImageFont.load_default()
         font_small = ImageFont.load_default()
     
-    # The matcha love quote
-    quote_line1 = "🌱 Matcha made in heaven 🍵"
-    quote_line2 = "You whisk my heart away! 💕"
+    # Simple love message
+    quote_text = "Lots of love"
     author_text = "- Majboos"
     
     # Get text dimensions for centering
-    line1_bbox = draw.textbbox((0, 0), quote_line1, font=font_large)
-    line2_bbox = draw.textbbox((0, 0), quote_line2, font=font_large)
+    quote_bbox = draw.textbbox((0, 0), quote_text, font=font_large)
     author_bbox = draw.textbbox((0, 0), author_text, font=font_small)
     
-    line1_width = line1_bbox[2] - line1_bbox[0]
-    line1_height = line1_bbox[3] - line1_bbox[1]
-    line2_width = line2_bbox[2] - line2_bbox[0]
-    line2_height = line2_bbox[3] - line2_bbox[1]
+    quote_width = quote_bbox[2] - quote_bbox[0]
+    quote_height = quote_bbox[3] - quote_bbox[1]
     author_width = author_bbox[2] - author_bbox[0]
     author_height = author_bbox[3] - author_bbox[1]
     
@@ -63,29 +59,25 @@ try:
     display_width = epd.height  # 122
     display_height = epd.width  # 250
     
-    # Center all text with proper spacing
-    total_text_height = line1_height + line2_height + author_height + 30  # 15px between lines, 15px before author
+    # Center both lines with spacing
+    total_text_height = quote_height + author_height + 20  # 20px spacing between lines
     start_y = (display_height - total_text_height) // 2
     
-    line1_x = (display_width - line1_width) // 2
-    line1_y = start_y
-    
-    line2_x = (display_width - line2_width) // 2
-    line2_y = start_y + line1_height + 15
+    quote_x = (display_width - quote_width) // 2
+    quote_y = start_y
     
     author_x = (display_width - author_width) // 2
-    author_y = line2_y + line2_height + 15
+    author_y = start_y + quote_height + 20
     
     # Draw the text
-    draw.text((line1_x, line1_y), quote_line1, font=font_large, fill=0)  # 0 = black
-    draw.text((line2_x, line2_y), quote_line2, font=font_large, fill=0)
+    draw.text((quote_x, quote_y), quote_text, font=font_large, fill=0)  # 0 = black
     draw.text((author_x, author_y), author_text, font=font_small, fill=0)
     
     # Display the image
-    logging.info("Displaying matcha love quote...")
+    logging.info("Displaying love message...")
     epd.display(epd.getbuffer(image))
     
-    logging.info("Matcha love quote displayed successfully!")
+    logging.info("Love message displayed successfully!")
     logging.info("The display will remain showing the quote until you run another script or power off.")
     
     # Put the display to sleep to save power

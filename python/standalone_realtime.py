@@ -1,35 +1,46 @@
-# Simple Real-time Display for Waveshare 2.9 inch e-Paper
-# Updates every second with time, crypto, weather, and system info
+#!/usr/bin/env python3
+"""
+Standalone Real-time Display for Waveshare 2.9 inch e-Paper
+This version includes all necessary imports and can be run directly
+"""
+
 import sys
 import os
-
-# Get the current directory and add the lib path
-current_dir = os.path.dirname(os.path.realpath(__file__))
-lib_dir = os.path.join(current_dir, '..')
-sys.path.insert(0, lib_dir)
-
-picdir = os.path.join(current_dir, '../../pic/2in9')
-fontdir = os.path.join(current_dir, '../../pic')
-
-# Import the display driver
-from TP_lib import epd2in9_V2
-epd = epd2in9_V2.EPD_2IN9_V2()
-
-from datetime import datetime
 import time
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import json
 import psutil
 import threading
 
+# Add the lib directory to Python path
+current_dir = os.path.dirname(os.path.realpath(__file__))
+lib_dir = os.path.join(current_dir, 'lib')
+sys.path.insert(0, lib_dir)
+
+# Import the display driver
+from TP_lib import epd2in9_V2
+epd = epd2in9_V2.EPD_2IN9_V2()
+
+# Set up paths
+picdir = os.path.join(current_dir, 'pic/2in9')
+fontdir = os.path.join(current_dir, 'pic')
+
 # Set the fonts
-fontdir = os.path.join(current_dir, '../../pic')
-font16 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 16)
-font20 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 20)
-font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
-font30 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 30)
-font40 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 40)
+try:
+    font16 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 16)
+    font20 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 20)
+    font24 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 24)
+    font30 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 30)
+    font40 = ImageFont.truetype(os.path.join(fontdir, 'Font.ttc'), 40)
+except:
+    # Fallback to default fonts if custom fonts not available
+    font16 = ImageFont.load_default()
+    font20 = ImageFont.load_default()
+    font24 = ImageFont.load_default()
+    font30 = ImageFont.load_default()
+    font40 = ImageFont.load_default()
 
 # Set the colors
 black = 'rgb(0,0,0)'
@@ -151,7 +162,7 @@ def create_display():
 
 def run_display():
     """Main function to run the display"""
-    print("Starting Simple Real-Time Display...")
+    print("Starting Standalone Real-Time Display...")
     print("Press Ctrl+C to stop")
     
     # Initialize display
@@ -176,6 +187,8 @@ def run_display():
         print("\nStopping display...")
     except Exception as e:
         print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         epd.module_exit()
 

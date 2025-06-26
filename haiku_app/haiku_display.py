@@ -6,15 +6,23 @@ import random
 from PIL import Image, ImageDraw, ImageFont
 import logging
 
-# Add the lib path for the Waveshare display
-libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+# Add the correct lib path for YOUR specific Touch e-Paper HAT
+libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
+# Also try the current directory lib
+current_libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+if os.path.exists(current_libdir):
+    sys.path.append(current_libdir)
+
 try:
-    from waveshare_epd import epd2in13_V4
+    # Import using the correct library structure for your model
+    from TP_lib import epd2in13_V4
+    print("Successfully imported TP_lib.epd2in13_V4")
 except ImportError:
-    print("Waveshare library not found. Make sure you've installed the Touch_e-Paper_HAT library.")
+    print("TP_lib not found. Make sure you've copied the lib directory from Touch_e-Paper_HAT.")
+    print("Expected path: ~/shakkeel_Touch_e-Paper_HAT/python/lib")
     sys.exit(1)
 
 # Configuration
@@ -142,7 +150,8 @@ class HaikuDisplay:
         """Initialize the e-paper display"""
         try:
             logger.info("Initializing display...")
-            self.epd.init()
+            # Use the correct initialization method for your model
+            self.epd.init(self.epd.FULL_UPDATE)
             self.epd.Clear(0xFF)
             logger.info("Display initialized successfully")
             return True
@@ -187,8 +196,13 @@ class HaikuDisplay:
         
         # Draw "HAIKU" header
         header = "HAIKU"
-        header_bbox = draw.textbbox((0, 0), header, font=title_font)
-        header_width = header_bbox[2] - header_bbox[0]
+        try:
+            header_bbox = draw.textbbox((0, 0), header, font=title_font)
+            header_width = header_bbox[2] - header_bbox[0]
+        except:
+            # Fallback for older PIL versions
+            header_width, _ = title_font.getsize(header)
+        
         header_x = (self.width - header_width) // 2
         draw.text((header_x, y_position), header, font=title_font, fill=0)
         y_position += 25
@@ -204,8 +218,12 @@ class HaikuDisplay:
         
         for i, line in enumerate(lines):
             # Center each line
-            line_bbox = draw.textbbox((0, 0), line, font=text_font)
-            line_width = line_bbox[2] - line_bbox[0]
+            try:
+                line_bbox = draw.textbbox((0, 0), line, font=text_font)
+                line_width = line_bbox[2] - line_bbox[0]
+            except:
+                line_width, _ = text_font.getsize(line)
+                
             line_x = (self.width - line_width) // 2
             draw.text((line_x, y_position), line, font=text_font, fill=0)
             y_position += line_spacing
@@ -218,15 +236,23 @@ class HaikuDisplay:
         
         # Draw theme/season info
         theme_info = f"~ {haiku_data['season']} ~"
-        theme_bbox = draw.textbbox((0, 0), theme_info, font=small_font)
-        theme_width = theme_bbox[2] - theme_bbox[0]
+        try:
+            theme_bbox = draw.textbbox((0, 0), theme_info, font=small_font)
+            theme_width = theme_bbox[2] - theme_bbox[0]
+        except:
+            theme_width, _ = small_font.getsize(theme_info)
+            
         theme_x = (self.width - theme_width) // 2
         draw.text((theme_x, y_position), theme_info, font=small_font, fill=0)
         
         # Add timestamp at bottom
         timestamp = time.strftime("%H:%M")
-        timestamp_bbox = draw.textbbox((0, 0), timestamp, font=small_font)
-        timestamp_width = timestamp_bbox[2] - timestamp_bbox[0]
+        try:
+            timestamp_bbox = draw.textbbox((0, 0), timestamp, font=small_font)
+            timestamp_width = timestamp_bbox[2] - timestamp_bbox[0]
+        except:
+            timestamp_width, _ = small_font.getsize(timestamp)
+            
         timestamp_x = (self.width - timestamp_width) // 2
         draw.text((timestamp_x, self.height - 18), timestamp, font=small_font, fill=0)
         
@@ -236,7 +262,8 @@ class HaikuDisplay:
         """Display the image on the e-paper display"""
         try:
             logger.info("Updating display...")
-            self.epd.display(self.epd.getbuffer(image))
+            # Use the correct display method for your model
+            self.epd.displayPartBaseImage(self.epd.getbuffer(image))
             logger.info("Display updated successfully")
             return True
         except Exception as e:
@@ -274,8 +301,12 @@ class HaikuDisplay:
         for i, line in enumerate(lines):
             if line:
                 font_to_use = title_font if i == 0 else font
-                line_bbox = draw.textbbox((0, 0), line, font=font_to_use)
-                line_width = line_bbox[2] - line_bbox[0]
+                try:
+                    line_bbox = draw.textbbox((0, 0), line, font=font_to_use)
+                    line_width = line_bbox[2] - line_bbox[0]
+                except:
+                    line_width, _ = font_to_use.getsize(line)
+                    
                 line_x = (self.width - line_width) // 2
                 draw.text((line_x, y_pos), line, font=font_to_use, fill=0)
             y_pos += 18
@@ -292,7 +323,15 @@ class HaikuDisplay:
         # Show startup message
         self.display_startup_message()
         
+        # Switch to partial update mode for better performance
+        try:
+            self.epd.init(self.epd.PART_UPDATE)
+        except:
+            logger.warning("Could not switch to partial update mode")
+        
         logger.info("Starting haiku display loop...")
+        
+        refresh_count = 0
         
         while True:
             try:
@@ -302,7 +341,22 @@ class HaikuDisplay:
                 
                 # Create and display the haiku image
                 image = self.create_haiku_image(haiku_data)
-                self.display_image(image)
+                
+                # Every 10th refresh, do a full refresh to prevent ghosting
+                if refresh_count % 10 == 0:
+                    logger.info("Performing full refresh to prevent ghosting")
+                    self.epd.init(self.epd.FULL_UPDATE)
+                    self.epd.displayPartBaseImage(self.epd.getbuffer(image))
+                    self.epd.init(self.epd.PART_UPDATE)
+                else:
+                    # Use partial update for faster refresh
+                    try:
+                        self.epd.displayPartial(self.epd.getbuffer(image))
+                    except:
+                        # Fallback to base image method
+                        self.epd.displayPartBaseImage(self.epd.getbuffer(image))
+                
+                refresh_count += 1
                 
                 # Wait for next refresh
                 logger.info(f"Waiting {REFRESH_INTERVAL} seconds before next haiku...")

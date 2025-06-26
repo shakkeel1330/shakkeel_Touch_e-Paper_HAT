@@ -1,0 +1,15 @@
+[Unit]
+Description=Haiku Display Service
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/haiku-display
+ExecStart=/usr/bin/python3 /home/pi/haiku-display/haiku_display.py
+Restart=always
+RestartSec=10
+Environment=PYTHONPATH=/home/pi/haiku-display
+
+[Install]
+WantedBy=multi-user.target
